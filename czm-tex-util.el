@@ -69,5 +69,20 @@ number as a string."
 	(kill-buffer)
 	result))))
 
+
+(defun czm-tex-util-environment-bounds ()
+  "Returns a cons cell of the beginning and end of the current LaTeX environment region."
+  (LaTeX-mark-environment)
+  (let ((begin (region-beginning))
+        (end (region-end)))
+    (goto-char begin)
+    (forward-line 1)
+    (setq begin (point))
+    (goto-char end)
+    (forward-line -1)
+    (deactivate-mark) ; deactivate the mark after the function has been called
+    (cons begin (point))))
+
+
 (provide 'czm-tex-util)
 ;;; czm-tex-util.el ends here
