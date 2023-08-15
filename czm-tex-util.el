@@ -84,5 +84,28 @@ number as a string."
     (cons begin (point))))
 
 
+(defun czm-tex-util-get-bib-files ()
+  "Get bib files for current buffer.
+If the current buffer contains a \\bibliography command, return
+a list containing the files referenced by that command.  Otherwise, return nil."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (when (re-search-forward "\\\\bibliography{\\([^}]+\\)}" nil t)
+        (let ((contents (match-string 1)))
+          ;; contents is a comma-delimited list of files, which may
+          ;; contain extra spaces.  Each file is either a relative or
+          ;; absolute path to a .bib file.  The .bib extension is
+          ;; optional.
+          (mapcar
+           (lambda (x)
+             (let ((file (expand-file-name
+                          (concat (file-name-sans-extension x) ".bib"))))
+               (if (file-exists-p file)
+                   file
+                 (user-error "BibTeX file %s does not exist" file))))
+           (split-string contents "[, ]+" t)))))))
+
 (provide 'czm-tex-util)
 ;;; czm-tex-util.el ends here
