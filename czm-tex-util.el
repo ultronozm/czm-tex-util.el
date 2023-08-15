@@ -71,7 +71,7 @@ number as a string."
 
 
 (defun czm-tex-util-environment-bounds ()
-  "Returns a cons cell of the beginning and end of the current LaTeX environment region."
+  "Return cons cell describing current LaTeX environment."
   (LaTeX-mark-environment)
   (let ((begin (region-beginning))
         (end (region-end)))
@@ -106,6 +106,67 @@ a list containing the files referenced by that command.  Otherwise, return nil."
                    file
                  (user-error "BibTeX file %s does not exist" file))))
            (split-string contents "[, ]+" t)))))))
+
+(defun czm-tex-util-remove-braces-accents (input)
+  "Remove braces and accepts from string INPUT.
+In practice, INPUT is a BiBTeX author name or title.  The idea is
+to make it easier to search for author names with accents.
+Probably there's some standard library that does this, but I
+couldn't quickly find it."
+  (with-temp-buffer
+    (insert input)
+    (goto-char (point-min))
+    (while (re-search-forward
+	    (regexp-opt
+	     (list
+	      "\\{"
+	      "{"
+	      "}"
+	      "\\'"
+	      "\\`"
+	      "\\^"
+	      "\\\""
+	      "\\~"))
+	    nil t)
+      (unless (save-match-data (texmathp))
+	(replace-match "" t t)))
+    (goto-char (point-min))
+    (while (re-search-forward
+	    (regexp-opt
+	     (list
+	      "\\l "
+	      "\\l"))
+	    nil t)
+      (unless (texmathp)
+	(replace-match "l")))
+    (while (re-search-forward
+	    (regexp-opt
+	     (list
+	      "\\cprime "
+	      "\\cprime"))
+	    nil t)
+      (unless (texmathp)
+	(replace-match "")))
+    (while (re-search-forward
+	    (regexp-opt
+	     (list
+	      "\\oe "
+	      "\\oe"))
+	    nil t)
+      (unless (texmathp)
+	(replace-match "oe")))
+    (goto-char (point-min))
+    (while (re-search-forward
+	    "\\\\\\([a-zA-Z]\\)"
+	    nil t)
+      (unless (texmathp)
+	(replace-match "l")))
+    (while (re-search-forward
+	    "ḡ"
+	    nil t)
+      (unless (texmathp)
+	(replace-match "g")))
+    (buffer-substring-no-properties (point-min) (point-max))))
 
 (provide 'czm-tex-util)
 ;;; czm-tex-util.el ends here
