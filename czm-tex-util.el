@@ -5,7 +5,7 @@
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
 ;; Version: 0.1
 ;; URL: https://github.com/ultronozm/czm-tex-util.el
-;; Package-Requires: ((emacs "26.1"))
+;; Package-Requires: ((emacs "26.1") (auctex "11.86.1"))
 ;; Keywords: tex
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,9 @@
 ;; This file contains utility functions for tex buffers.
 
 ;;; Code:
+
+(require 'tex)
+(require 'latex)
 
 (defun czm-tex-util-get-label-number (label)
   "Get number of LABEL for current tex buffer.
