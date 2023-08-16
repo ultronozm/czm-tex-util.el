@@ -57,7 +57,8 @@
             (time-less-p (gethash 'timestamp cache)
                          (nth 5 (file-attributes aux-file))))
         (setq cache (czm-tex-util-update-cache aux-file)))
-    (gethash label cache)))
+    (when cache
+      (gethash label cache))))
 
 (defun czm-tex-util-get-label-number (label)
   "Get number of LABEL for current tex buffer.
