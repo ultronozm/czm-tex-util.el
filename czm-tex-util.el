@@ -30,6 +30,35 @@
 (require 'tex)
 (require 'latex)
 
+(defvar czm-tex-util--cache (make-hash-table :test 'equal))
+
+(defun czm-tex-util-update-cache (aux-file)
+  "Update the cache for AUX-FILE."
+  (when (file-exists-p aux-file)
+    (with-current-buffer (find-file-noselect aux-file)
+      ;; scan file to populate cache
+      (let ((cache (make-hash-table :test 'equal))
+            (pattern "\\newlabel{\\([^}]+\\)}{{\\([^}]+\\)}"))
+        (save-excursion
+          (goto-char (point-min))
+          (while (re-search-forward pattern nil t)
+            (let ((label (match-string 1))
+                  (number (match-string 2)))
+              (puthash label number cache))))
+        (puthash 'timestamp (current-time) cache)
+        (puthash aux-file cache czm-tex-util--cache)
+        (kill-buffer)
+        cache))))
+
+(defun czm-tex-util-get-label-number-helper (label aux-file)
+  "Get the number of LABEL from the aux file AUX-FILE."
+  (let ((cache (gethash aux-file czm-tex-util--cache)))
+    (if (or (not cache)
+            (time-less-p (gethash 'timestamp cache)
+                         (nth 5 (file-attributes aux-file))))
+        (setq cache (czm-tex-util-update-cache aux-file)))
+    (gethash label cache)))
+
 (defun czm-tex-util-get-label-number (label)
   "Get number of LABEL for current tex buffer.
 If the buffer does not point to a file, or if the corresponding
@@ -54,25 +83,6 @@ with \"X\"."
 	 (when found
 	   (concat "X" found)))))))
 
-(defun czm-tex-util-get-label-number-helper (label aux-file)
-  "Get the number of LABEL from the aux file AUX-FILE.
-If LABEL is not found, return nil.  If LABEL is found, return the
-number as a string."
-  (when (file-exists-p aux-file)
-    (with-current-buffer (find-file-noselect aux-file)
-      (let ((result
-	     (save-excursion
-	       (goto-char (point-min))
-	       (and
-		(search-forward (concat "\\newlabel{" label "}") nil t)
-		(search-forward "{{" nil t)
-		(buffer-substring-no-properties
-		 (point)
-		 (progn (search-forward "}" nil t) (- (point) 1)))))))
-	(kill-buffer)
-	result))))
-
-
 (defun czm-tex-util-environment-bounds ()
   "Return cons cell describing current LaTeX environment."
   (LaTeX-mark-environment)
@@ -85,7 +95,6 @@ number as a string."
     (forward-line -1)
     (deactivate-mark) ; deactivate the mark after the function has been called
     (cons begin (point))))
-
 
 (defun czm-tex-util-get-bib-files ()
   "Get bib files for current buffer.
