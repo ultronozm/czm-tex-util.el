@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; This file contains utility functions for tex buffers.
+;; This package contains utility functions for tex buffers.
 
 ;;; Code:
 
