@@ -68,7 +68,7 @@ return nil.  Otherwise, return the label number as a string.  If
 the label is found in an external document, prefix the string
 with \"X\"."
   (or
-   (when-let* ((tex-file (buffer-file-name))
+   (when-let* ((tex-file (buffer-file-name (buffer-base-buffer)))
 	       (aux-file (concat (file-name-sans-extension tex-file) ".aux")))
      (czm-tex-util-get-label-number-helper label aux-file))
    (save-excursion
