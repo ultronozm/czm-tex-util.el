@@ -35,7 +35,8 @@
 (defun czm-tex-util-update-cache (aux-file)
   "Update the cache for AUX-FILE."
   (when (file-exists-p aux-file)
-    (with-current-buffer (find-file-noselect aux-file)
+    (with-temp-buffer
+      (insert-file-contents aux-file)
       ;; scan file to populate cache
       (let ((cache (make-hash-table :test 'equal))
             (pattern "\\newlabel{\\([^}]+\\)}{{\\([^}]+\\)}"))
@@ -47,7 +48,6 @@
               (puthash label number cache))))
         (puthash 'timestamp (current-time) cache)
         (puthash aux-file cache czm-tex-util--cache)
-        (kill-buffer)
         cache))))
 
 (defun czm-tex-util-get-label-number-helper (label aux-file)
