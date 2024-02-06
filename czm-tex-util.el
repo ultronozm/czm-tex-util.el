@@ -5,7 +5,7 @@
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
 ;; Version: 0.0
 ;; URL: https://github.com/ultronozm/czm-tex-util.el
-;; Package-Requires: ((emacs "26.1") (auctex "11.86.1"))
+;; Package-Requires: ((emacs "26.1") (auctex))
 ;; Keywords: tex
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -46,7 +46,8 @@
             (let ((label (match-string 1))
                   (number (match-string 2)))
               (puthash label number cache))))
-        (puthash 'timestamp (current-time) cache)
+        (puthash 'timestamp (current-time)
+                 cache)
         (puthash aux-file cache czm-tex-util--cache)
         cache))))
 
@@ -69,20 +70,22 @@ the label is found in an external document, prefix the string
 with \"X\"."
   (or
    (when-let* ((tex-file (buffer-file-name (buffer-base-buffer)))
-	       (aux-file (concat (file-name-sans-extension tex-file) ".aux")))
+               (aux-file (concat (file-name-sans-extension tex-file)
+                                 ".aux")))
      (czm-tex-util-get-label-number-helper label aux-file))
    (save-excursion
      (save-restriction
        (widen)
        (goto-char (point-min))
        (let (found)
-	 (while (and (null found)
-		     (re-search-forward "\\\\externaldocument{\\([^}]+\\)}" nil t))
-	   (let*
-	       ((filename (concat (match-string 1) ".aux")))
-	     (setq found (czm-tex-util-get-label-number-helper label filename))))
-	 (when found
-	   (concat "X" found)))))))
+         (while (and (null found)
+                     (re-search-forward "\\\\externaldocument{\\([^}]+\\)}" nil t))
+           (let*
+               ((filename (concat (match-string 1)
+                                  ".aux")))
+             (setq found (czm-tex-util-get-label-number-helper label filename))))
+         (when found
+           (concat "X" found)))))))
 
 (defun czm-tex-util-environment-bounds ()
   "Return cons cell describing current LaTeX environment."
@@ -130,55 +133,55 @@ couldn't quickly find it."
     (insert input)
     (goto-char (point-min))
     (while (re-search-forward
-	    (regexp-opt
-	     (list
-	      "\\{"
-	      "{"
-	      "}"
-	      "\\'"
-	      "\\`"
-	      "\\^"
-	      "\\\""
-	      "\\~"))
-	    nil t)
+     (regexp-opt
+      (list
+       "\\{"
+       "{"
+       "}"
+       "\\'"
+       "\\`"
+       "\\^"
+       "\\\""
+       "\\~"))
+     nil t)
       (unless (save-match-data (texmathp))
-	(replace-match "" t t)))
+ (replace-match "" t t)))
     (goto-char (point-min))
     (while (re-search-forward
-	    (regexp-opt
-	     (list
-	      "\\l "
-	      "\\l"))
-	    nil t)
+     (regexp-opt
+      (list
+       "\\l "
+       "\\l"))
+     nil t)
       (unless (texmathp)
-	(replace-match "l")))
+ (replace-match "l")))
     (while (re-search-forward
-	    (regexp-opt
-	     (list
-	      "\\cprime "
-	      "\\cprime"))
-	    nil t)
+     (regexp-opt
+      (list
+       "\\cprime "
+       "\\cprime"))
+     nil t)
       (unless (texmathp)
-	(replace-match "")))
+ (replace-match "")))
     (while (re-search-forward
-	    (regexp-opt
-	     (list
-	      "\\oe "
-	      "\\oe"))
-	    nil t)
+     (regexp-opt
+      (list
+       "\\oe "
+       "\\oe"))
+     nil t)
       (unless (texmathp)
-	(replace-match "oe")))
+ (replace-match "oe")))
     (goto-char (point-min))
     (while (re-search-forward
-	    "\\\\\\([a-zA-Z]\\)"
-	    nil t)
+     "\\\\\\([a-zA-Z]\\)"
+     nil t)
       (unless (texmathp)
-	(replace-match "l")))
+ (replace-match "l")))
     (while (re-search-forward
-	    "ḡ"
-	    nil t)
+     "ḡ"
+     nil t)
       (unless (texmathp)
-	(replace-match "g")))
+ (replace-match "g")))
     (buffer-substring-no-properties (point-min) (point-max))))
 
 (provide 'czm-tex-util)
