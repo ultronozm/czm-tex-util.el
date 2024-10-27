@@ -70,8 +70,9 @@ the label is found in an external document, prefix the string
 with \"X\"."
   (or
    (when-let* ((tex-file (buffer-file-name (buffer-base-buffer)))
-               (aux-file (concat (file-name-sans-extension tex-file)
-                                 ".aux")))
+               (aux-file (concat (file-name-with-extension
+                                  (file-name-sans-extension tex-file)
+                                  "aux"))))
      (czm-tex-util-get-label-number-helper label aux-file))
    (save-excursion
      (save-restriction
@@ -81,8 +82,8 @@ with \"X\"."
          (while (and (null found)
                      (re-search-forward "\\\\externaldocument{\\([^}]+\\)}" nil t))
            (let*
-               ((filename (concat (match-string 1)
-                                  ".aux")))
+               ((filename (file-name-with-extension (match-string 1)
+                                                    "aux")))
              (setq found (czm-tex-util-get-label-number-helper label filename))))
          (when found
            (concat "X" found)))))))
@@ -117,7 +118,8 @@ a list containing the files referenced by that command.  Otherwise, return nil."
           (mapcar
            (lambda (x)
              (let ((file (expand-file-name
-                          (concat (file-name-sans-extension x) ".bib"))))
+                          (file-name-with-extension
+                           (file-name-sans-extension x) "bib"))))
                (if (file-exists-p file)
                    file
                  (user-error "BibTeX file %s does not exist" file))))
