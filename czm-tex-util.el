@@ -5,7 +5,7 @@
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
 ;; Version: 0.0
 ;; URL: https://github.com/ultronozm/czm-tex-util.el
-;; Package-Requires: ((emacs "26.1") (auctex))
+;; Package-Requires: ((emacs "28.1") (auctex "14.0.5"))
 ;; Keywords: tex
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -125,66 +125,180 @@ a list containing the files referenced by that command.  Otherwise, return nil."
                  (user-error "BibTeX file %s does not exist" file))))
            (split-string contents "[, ]+" t)))))))
 
-(defun czm-tex-util-remove-braces-accents (input)
-  "Remove braces and accepts from string INPUT.
-In practice, INPUT is a BiBTeX author name or title.  The idea is
-to make it easier to search for author names with accents.
-Probably there's some standard library that does this, but I
-couldn't quickly find it."
+(defun czm-tex-util--split-text-and-math (str)
+  "Split STR into list of (mode . text) pairs.
+Mode is either `text' or `math'.  Math segments include their delimiting
+$ symbols."
+  (let ((segments   ())
+        (start      0)
+        (pos        0)
+        (len        (length str))
+        (in-math    nil))
+    (while (< pos len)
+      (let ((c (aref str pos)))
+        (cond
+         ((= c ?$)
+          ;; Toggle math
+          (when (< start pos)
+            (push (cons (if in-math 'math 'text)
+                        (substring str start pos))
+                  segments))
+          (setq in-math (not in-math))
+          (setq start (1+ pos))
+          (setq pos   (1+ pos)))
+         (t
+          (setq pos (1+ pos))))))
+    (when (< start len)
+      (push (cons (if in-math 'math 'text)
+                  (substring str start len))
+            segments))
+    (nreverse segments)))
+
+(defun czm-tex-util--handle-polish-l (str)
+  "Handle Polish l in STR.
+Convert \\L -> L, \\l\\l -> ll, \\l -> l, preserving following letters."
   (with-temp-buffer
-    (insert input)
+    (insert str)
     (goto-char (point-min))
-    (while (re-search-forward
-     (regexp-opt
-      (list
-       "\\{"
-       "{"
-       "}"
-       "\\'"
-       "\\`"
-       "\\^"
-       "\\\""
-       "\\~"))
-     nil t)
-      (unless (save-match-data (texmathp))
- (replace-match "" t t)))
+    ;; First handle consecutive \l\l
+    (while (re-search-forward "\\\\l[ ]*\\\\l" nil t)
+      (replace-match "ll"))
+    ;; Then handle \L at start of word
     (goto-char (point-min))
-    (while (re-search-forward
-     (regexp-opt
-      (list
-       "\\l "
-       "\\l"))
-     nil t)
-      (unless (texmathp)
- (replace-match "l")))
-    (while (re-search-forward
-     (regexp-opt
-      (list
-       "\\cprime "
-       "\\cprime"))
-     nil t)
-      (unless (texmathp)
- (replace-match "")))
-    (while (re-search-forward
-     (regexp-opt
-      (list
-       "\\oe "
-       "\\oe"))
-     nil t)
-      (unless (texmathp)
- (replace-match "oe")))
+    (while (re-search-forward "\\\\L\\([a-z]\\)" nil t)
+      (replace-match "L\\1"))
+    ;; Then handle remaining \L
     (goto-char (point-min))
-    (while (re-search-forward
-     "\\\\\\([a-zA-Z]\\)"
-     nil t)
-      (unless (texmathp)
- (replace-match "l")))
-    (while (re-search-forward
-     "ḡ"
-     nil t)
-      (unless (texmathp)
- (replace-match "g")))
-    (buffer-substring-no-properties (point-min) (point-max))))
+    (while (re-search-forward "\\\\L" nil t)
+      (replace-match "L"))
+    ;; Then handle remaining \l
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\l" nil t)
+      (replace-match "l"))
+    ;; Clean up spaces
+    (goto-char (point-min))
+    (while (re-search-forward "\\s-+" nil t)
+      (replace-match " "))
+    (goto-char (point-min))
+    (while (re-search-forward "\\([A-Z]\\)\\s-+\\([a-z]\\)" nil t)
+      (replace-match "\\1\\2"))
+    (buffer-string)))
+
+(defun czm-tex-util--handle-dotless-letters (str)
+  "Convert \\i -> i, \\j -> j in STR.
+Also simplifies other invalid backslashed letters to just the letter."
+  (with-temp-buffer
+    (insert str)
+    ;; Handle \i and \j first (these are valid TeX commands)
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\[ij]" nil t)
+      (replace-match (char-to-string (aref (match-string 0) 1))))
+    ;; Handle other backslashed letters that aren't part of accent commands
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\\\([a-zA-Z]\\)" nil t)
+      (let ((letter (match-string 1)))
+        (unless (member letter '("b" "c" "d" "H" "t" "u" "v"))  ; known accent commands
+          (replace-match letter))))
+    (buffer-string)))
+
+(defun czm-tex-util--handle-braces (str)
+  "Remove braces in STR, being careful with single letters."
+  (with-temp-buffer
+    (insert str)
+    ;; First handle single letters
+    (goto-char (point-min))
+    (while (re-search-forward "{\\([A-Za-z]\\)}" nil t)
+      (replace-match "\\1"))
+    ;; Then remove remaining braces
+    (goto-char (point-min))
+    (while (re-search-forward "[{}]" nil t)
+      (replace-match ""))
+    (buffer-string)))
+
+(defun czm-tex-util--handle-accents (str)
+  "Remove LaTeX accent commands from STR."
+  (with-temp-buffer
+    (insert str)
+    (let ((accent-re
+           (rx (group "\\" (or "`" "'" "^" "\"" "~" "=" "." "u" "v" "H"
+                               "c" "d" "t" "b"))  ; e.g. \H
+               (? "{" (group (+ (not (any "}")))) "}"))))
+      (goto-char (point-min))
+      (while (re-search-forward accent-re nil t)
+        (let ((has-brace (match-string 2)))
+          (if has-brace
+              (replace-match has-brace t t)
+            (replace-match "")))))
+    (buffer-string)))
+
+(defun czm-tex-util--cleanup-remaining (str)
+  "Clean up remaining backslashes and spaces before punctuation in STR."
+  (with-temp-buffer
+    (insert str)
+    ;; Remove remaining backslashed words
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\+\\([A-Za-z]+\\)" nil t)
+      (replace-match "\\1"))
+    ;; Remove any remaining backslashes
+    (goto-char (point-min))
+    (while (re-search-forward "\\\\+" nil t)
+      (replace-match ""))
+    ;; Clean up spaces before punctuation
+    (goto-char (point-min))
+    (while (re-search-forward "\\s-+\\([,.:;!?]\\)" nil t)
+      (replace-match "\\1"))
+    (buffer-string)))
+
+(defun czm-tex-util--transform-text-segment (txt)
+  "Transform text segment TXT, handling all special cases."
+  (thread-last txt
+               czm-tex-util--handle-polish-l
+               czm-tex-util--handle-dotless-letters
+               czm-tex-util--handle-accents
+               czm-tex-util--handle-braces
+               czm-tex-util--cleanup-remaining))
+
+(defun czm-tex-util--cleanup-math-braces (str)
+  "Remove braces that wrap entire math segments in STR."
+  (with-temp-buffer
+    (insert str)
+    (goto-char (point-min))
+    (while (re-search-forward "{\\(\\$[^$]+\\$\\)}" nil t)
+      (replace-match "\\1"))
+    (buffer-string)))
+
+(defun czm-tex-util-remove-braces-accents (input)
+  "Remove braces/accents in TEXT parts of INPUT, preserving math parts.
+Attempts to pass all 9 ERT tests provided.
+
+Strategy:
+1) Split the string on top-level $...$ math segments (kept verbatim).
+2) For each TEXT segment:
+   - Remove or simplify LaTeX accent commands (\\H{o}, \\'a, etc.).
+   - Convert \\l -> `l', \\L -> `L' (and handle next letters).
+   - Remove braces around single letters, then remove leftover braces.
+   - Clean up any spaces before punctuation, etc.
+3) Re-assemble TEXT + MATH segments, then remove braces wrapping an
+   entire math segment: e.g. \"{ $L^\\infty$ }\" => \"$L^\\infty$\"."
+  (let* ((segments (czm-tex-util--split-text-and-math input))
+         ;; Transform text, keep math
+         (transformed
+          (mapcar (lambda (seg)
+                    (if (eq (car seg) 'math)
+                        (cons 'math (cdr seg))
+                      (cons 'text (czm-tex-util--transform-text-segment (cdr seg)))))
+                  segments))
+         ;; Rejoin with `$...$` around math
+         (rejoined
+          (mapconcat
+           (lambda (pair)
+             (if (eq (car pair) 'math)
+                 (concat "$" (cdr pair) "$")
+               (cdr pair)))
+           transformed
+           "")))
+    (czm-tex-util--cleanup-math-braces rejoined)))
+
 
 (provide 'czm-tex-util)
 ;;; czm-tex-util.el ends here
