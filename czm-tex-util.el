@@ -159,29 +159,27 @@ $ symbols."
 Convert \\L -> L, \\l\\l -> ll, \\l -> l, preserving following letters."
   (with-temp-buffer
     (insert str)
-    (goto-char (point-min))
-    ;; First handle consecutive \l\l
-    (while (re-search-forward "\\\\l[ ]*\\\\l" nil t)
-      (replace-match "ll"))
-    ;; Then handle \L at start of word
-    (goto-char (point-min))
-    (while (re-search-forward "\\\\L\\([a-z]\\)" nil t)
-      (replace-match "L\\1"))
-    ;; Then handle remaining \L
-    (goto-char (point-min))
-    (while (re-search-forward "\\\\L" nil t)
-      (replace-match "L"))
-    ;; Then handle remaining \l
-    (goto-char (point-min))
-    (while (re-search-forward "\\\\l" nil t)
-      (replace-match "l"))
-    ;; Clean up spaces
-    (goto-char (point-min))
-    (while (re-search-forward "\\s-+" nil t)
-      (replace-match " "))
-    (goto-char (point-min))
-    (while (re-search-forward "\\([A-Z]\\)\\s-+\\([a-z]\\)" nil t)
-      (replace-match "\\1\\2"))
+    (let ((case-fold-search nil))  ; make search case-sensitive
+      ;; First handle consecutive \l\l (including with spaces between)
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\l[ ]*\\\\l" nil t)
+        (replace-match "ll"))
+
+      ;; Then handle \L followed by text
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\L[ ]*\\([a-z]\\)" nil t)
+        (replace-match "L\\1"))
+
+      ;; Then handle remaining \L
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\L" nil t)
+        (replace-match "L"))
+
+      ;; Then handle remaining single \l
+      (goto-char (point-min))
+      (while (re-search-forward "\\\\l" nil t)
+        (replace-match "l")))
+
     (buffer-string)))
 
 (defun czm-tex-util--handle-dotless-letters (str)

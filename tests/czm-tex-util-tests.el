@@ -3,7 +3,7 @@
 ;; Copyright (C) 2025  Paul Nelson
 
 ;; Author: Paul Nelson <ultrono@gmail.com>
-;; Keywords: 
+;; Keywords:
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,55 +28,55 @@
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-schubert ()
   "Test GL math mode preservation."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Schubert cells and Whittaker functionals for $\\text{GL}(n,\\mathbb{R})$ part II: Existence via integration by parts")
                    "Schubert cells and Whittaker functionals for $\\text{GL}(n,\\mathbb{R})$ part II: Existence via integration by parts")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-modular ()
   "Test mathrm GL preservation."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Modular representations of $\\mathrm{GL}_2({\\mathbb F}_q)$ using calculus")
                    "Modular representations of $\\mathrm{GL}_2({\\mathbb F}_q)$ using calculus")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-quantum ()
   "Test PGL math mode preservation."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Quantum ergodicity on the Bruhat-Tits building for $\\text{PGL}(3, F)$ in the Benjamini-Schramm limit")
                    "Quantum ergodicity on the Bruhat-Tits building for $\\text{PGL}(3, F)$ in the Benjamini-Schramm limit")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-spectral ()
   "Test braces around math mode."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Spectral aspect subconvex bounds for {$U_{n+1} \\times U_n$}")
                    "Spectral aspect subconvex bounds for $U_{n+1} \\times U_n$")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-whittaker ()
   "Test capitalization braces and math mode."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "The {W}hittaker period formula on metaplectic {$\\rm SL_2$}")
                    "The Whittaker period formula on metaplectic $\\rm SL_2$")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-linfty ()
   "Test braces around math at start."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "{$L^\\infty$} norms of eigenfunctions")
                    "$L^\\infty$ norms of eigenfunctions")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-voronoi ()
   "Test special character handling."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "On the {V}orono\\u{\\i} formula for {${\\rm GL}(n)$}")
                    "On the Voronoi formula for ${\\rm GL}(n)$")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-radziwill ()
   "Test Polish special characters."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Radziwi\\l \\l , Maksym and Soundararajan, K.")
                    "Radziwill, Maksym and Soundararajan, K.")))
 
 (ert-deftest czm-tex-util-remove-braces-accents-test-erdos ()
   "Test multiple accent types."
-  (should (string= (czm-tex-util-remove-braces-accents 
+  (should (string= (czm-tex-util-remove-braces-accents
                     "Erd\\H{o}s, P\\'al and \\L uczak, Tomasz and R\\'enyi, Alfr\\'ed")
                    "Erdos, Pal and Luczak, Tomasz and Renyi, Alfred")))
 
@@ -115,7 +115,29 @@
   (should (string= (czm-tex-util--handle-polish-l "\\L uczak") "Luczak"))
   (should (string= (czm-tex-util--handle-polish-l "Radziwi\\l\\l") "Radziwill"))
   ;; Mixed cases
-  (should (string= (czm-tex-util--handle-polish-l "\\L uczak and \\l\\l") "Luczak and ll")))
+  (should (string= (czm-tex-util--handle-polish-l "\\L uczak and \\l\\l") "Luczak and ll"))
+
+  ;; New tests for space preservation
+  (should (string= (czm-tex-util--handle-polish-l "John Smith and Jane Doe")
+                   "John Smith and Jane Doe"))
+  (should (string= (czm-tex-util--handle-polish-l "Multiple   Spaces   Test")
+                   "Multiple   Spaces   Test"))
+  (should (string= (czm-tex-util--handle-polish-l "(1999) Author One and Author Two")
+                   "(1999) Author One and Author Two"))
+  (should (string= (czm-tex-util--handle-polish-l "First M. Last")
+                   "First M. Last"))
+
+  ;; Mixed Polish and regular text with spaces
+  (should (string= (czm-tex-util--handle-polish-l "\\L uczak and Smith")
+                   "Luczak and Smith"))
+  (should (string= (czm-tex-util--handle-polish-l "Regular text with \\l\\l in middle")
+                   "Regular text with ll in middle"))
+
+  ;; Preservation of punctuation and spacing
+  (should (string= (czm-tex-util--handle-polish-l "Smith, John P. and Doe, Jane M.")
+                   "Smith, John P. and Doe, Jane M."))
+  (should (string= (czm-tex-util--handle-polish-l "(2023) Title - Subtitle")
+                   "(2023) Title - Subtitle")))
 
 (ert-deftest czm-tex-util--handle-dotless-letters-test ()
   "Test handling of dotless i and j."
